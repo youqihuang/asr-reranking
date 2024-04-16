@@ -23,6 +23,8 @@ from main import init_word_to_token
 from transformers import GPT2Tokenizer, GPT2Model, AutoModelWithLMHead, DataCollatorForLanguageModeling
 from transformers import Trainer, TrainingArguments
 import csv
+from transformers import ViltProcessor, ViltForImageAndTextRetrieval
+from tqdm.notebook import tqdm
 
 from PIL import Image
 
@@ -316,6 +318,43 @@ def finetune_gpt2(asrtraindataset, asrtestdataset, pipeline):
     )
     
     trainer.train()
+
+
+def finetune_vilt(viltraindataset):
+
+
+    # new_classifier = ###
+    # ViLT = ViltProcessor.from_pretrained(...)
+    # ViLT.classifier = new_classifier
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    processor = ViltProcessor.from_pretrained("dandelin/vilt-b32-finetuned-coco")
+    model = ViltForImageAndTextRetrieval.from_pretrained("dandelin/vilt-b32-finetuned-coco")
+    model.to(device)
+    scores = dict()
+    #extract text and image from dataset
+
+    optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5)
+
+    model.train()
+    for epoch in range(50):  # loop over the dataset multiple times
+        print(f"Epoch: {epoch}")
+        for batch in tqdm(train_dataloader):
+                # get the inputs;
+                encoding = processor(image, text, return_tensors="pt")
+
+                # zero the parameter gradients
+                optimizer.zero_grad()
+
+                # forward + backward + optimize
+                outputs = model(**encoding)
+                loss = outputs.loss
+                print("Loss:", loss.item())
+                # score = outputs.logits[:,0].item()
+                # scores[text] = score
+                loss.backward()
+                optimizer.step()
+
 
 if __name__ == "__main__":
     args = parse_args()
